@@ -7,7 +7,7 @@ is `0.x`, minor releases may change the public API.
 
 ## [Unreleased]
 
-## [0.1.0]
+## [0.1.0] - 2026-11-22
 
 First public release.
 
