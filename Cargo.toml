@@ -12,9 +12,9 @@ name = "_native"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.29"
-rand_chacha = "0.9"
-rand_core = "0.9"
+pyo3 = "0.30"
+rand_chacha = "0.10"
+rand_core = "0.10"
 smoltcp = { version = "0.14", default-features = false, features = [
     "std",
     "medium-ip",
