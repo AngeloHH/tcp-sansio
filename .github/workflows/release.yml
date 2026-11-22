@@ -1,0 +1,158 @@
+name: Release
+
+# Publishing a GitHub release builds every wheel and the sdist, then uploads
+# them to PyPI with Trusted Publishing. Running the workflow by hand only builds
+# and tests the distributions, which is useful before tagging a release.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux ${{ matrix.target }} (${{ matrix.libc }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: x86_64, libc: manylinux, manylinux: auto, test: true }
+          - { target: aarch64, libc: manylinux, manylinux: auto, test: false }
+          - { target: armv7, libc: manylinux, manylinux: auto, test: false }
+          - { target: x86_64, libc: musllinux, manylinux: musllinux_1_2, test: false }
+          - { target: aarch64, libc: musllinux, manylinux: musllinux_1_2, test: false }
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          args: --release --out dist
+      - name: Test wheel
+        if: ${{ matrix.test }}
+        run: |
+          python -m pip install pytest
+          python -m pip install --no-index --find-links dist tcp-sansio
+          python -m pytest -v
+      - uses: actions/upload-artifact@v6
+        with:
+          name: wheels-linux-${{ matrix.libc }}-${{ matrix.target }}
+          path: dist
+
+  windows:
+    name: Windows ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: windows-latest, target: x64, python_arch: x64 }
+          - { runner: windows-11-arm, target: aarch64, python_arch: arm64 }
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          architecture: ${{ matrix.python_arch }}
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+      - name: Test wheel
+        run: |
+          python -m pip install pytest
+          python -m pip install --no-index --find-links dist tcp-sansio
+          python -m pytest -v
+      - uses: actions/upload-artifact@v6
+        with:
+          name: wheels-windows-${{ matrix.target }}
+          path: dist
+
+  macos:
+    name: macOS ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-15-intel, target: x86_64 }
+          - { runner: macos-latest, target: aarch64 }
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+      - name: Test wheel
+        run: |
+          python -m pip install pytest
+          python -m pip install --no-index --find-links dist tcp-sansio
+          python -m pytest -v
+      - uses: actions/upload-artifact@v6
+        with:
+          name: wheels-macos-${{ matrix.target }}
+          path: dist
+
+  sdist:
+    name: Source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+      - uses: actions/upload-artifact@v6
+        with:
+          name: wheels-sdist
+          path: dist
+
+  publish:
+    name: Publish to PyPI
+    if: ${{ github.event_name == 'release' }}
+    needs: [linux, windows, macos, sdist]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/tcp-sansio/
+    permissions:
+      # Trusted Publishing and PEP 740 attestations.
+      id-token: write
+      # Attaching the distributions to the GitHub release.
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+      - name: Check that the tag matches the package version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="${TAG#v}"
+          if [ ! -f "dist/tcp_sansio-${version}.tar.gz" ]; then
+            echo "::error::Release tag $TAG does not match the version in Cargo.toml"
+            ls dist
+            exit 1
+          fi
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Attach distributions to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"

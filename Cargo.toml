@@ -1,0 +1,25 @@
+[package]
+name = "tcp-sansio-native"
+version = "0.1.0"
+edition = "2024"
+description = "Native smoltcp engine for the tcp-sansio Python package"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/AngeloHH/tcp-sansio"
+publish = false
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.29"
+rand_chacha = "0.9"
+rand_core = "0.9"
+smoltcp = { version = "0.14", default-features = false, features = [
+    "std",
+    "medium-ip",
+    "proto-ipv4",
+    "socket-tcp",
+    "socket-tcp-reno",
+    "socket-tcp-cubic",
+] }

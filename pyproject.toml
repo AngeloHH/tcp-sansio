@@ -1,0 +1,48 @@
+[build-system]
+requires = ["maturin>=1.10,<2"]
+build-backend = "maturin"
+
+[project]
+name = "tcp-sansio"
+dynamic = ["version"]
+description = "A Sans-I/O TCP stack for Python, powered by smoltcp"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT OR Apache-2.0"
+license-files = ["LICENSE-MIT", "LICENSE-APACHE"]
+authors = [{ name = "Angelo Herrera" }]
+keywords = ["tcp", "sans-io", "networking", "tcp-stack", "userspace", "smoltcp", "vpn"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Rust",
+    "Topic :: Internet",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Networking",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/AngeloHH/tcp-sansio"
+Repository = "https://github.com/AngeloHH/tcp-sansio"
+Issues = "https://github.com/AngeloHH/tcp-sansio/issues"
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10"]
+
+[tool.maturin]
+module-name = "tcp_sansio._native"
+python-source = "python"
+features = ["pyo3/extension-module", "pyo3/abi3-py310"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
